@@ -293,6 +293,20 @@
   </script>
   <script>
     /* Si la combinación existe pero no corresponde al momento elegido, guiamos al usuario. */
+    extraTips.splice(0,extraTips.length,
+      {icon:'🍌',title:'Separá las frutas que maduran rápido',text:'Banana, manzana, pera, palta y tomate liberan etileno: un gas natural que acelera la maduración de otros alimentos.',note:'Mantenelos lejos de hojas verdes, brócoli, pepino y frutillas.'},
+      {icon:'🥛',title:'Lácteos: al fondo de la heladera',text:'Leche, yogur y queso se conservan mejor en el estante interior más frío. La puerta cambia de temperatura cada vez que se abre.',note:'Cerrá bien los envases y usá utensilios limpios para no contaminarlos.'},
+      {icon:'🥔',title:'Papa, cebolla y ajo no van juntos',text:'Guardalos en un lugar oscuro, seco y ventilado, pero separados: la cebolla hace que la papa brote más rápido.',note:'No los guardes en heladera ni en bolsas cerradas.'},
+      {icon:'🍞',title:'Congelá el pan en porciones',text:'Si no lo vas a comer en dos días, cortalo en rebanadas y congelalo. Así sacás solo lo que necesitás.',note:'Podés pasarlo directo del freezer a la tostadora o sartén.'},
+      {icon:'🥚',title:'Huevos seguros',text:'Conservalos dentro de su maple y en el estante interior de la heladera, con la punta hacia abajo.',note:'No los laves antes de guardarlos; lavalos recién antes de usarlos.'},
+      {icon:'🍅',title:'Tomates según su madurez',text:'Si están firmes, dejalos fuera de la heladera para que maduren. Cuando ya estén maduros, refrigeralos para ganar algunos días.',note:'Sacalos 20 minutos antes de comer para recuperar sabor.'},
+      {icon:'🥩',title:'Carne y pollo sin contaminación',text:'Guardalos en un recipiente cerrado en el estante más bajo de la heladera para que sus jugos no caigan sobre otros alimentos.',note:'Cociná bien el pollo y descongelá siempre dentro de la heladera.'},
+      {icon:'🍲',title:'Sobras: enfriá y tapá',text:'Guardá la comida cocida en recipientes bajos y tapados dentro de las dos horas posteriores a cocinarla.',note:'Recalentá solo la porción que vas a comer y que quede bien caliente.'},
+      {icon:'🥫',title:'Una lata abierta se pasa de envase',text:'Después de abrir una conserva, volcá el sobrante en un recipiente de vidrio o plástico con tapa y refrigeralo.',note:'Consumilo en 2 o 3 días y nunca dejes el resto dentro de la lata.'},
+      {icon:'🍝',title:'Secos sin humedad',text:'Arroz, fideos, harina, polenta y cereales duran más en frascos o envases herméticos, lejos de vapor y calor.',note:'Usá primero el paquete abierto antes de empezar uno nuevo.'},
+      {icon:'❄️',title:'Congelá con fecha',text:'Dividí en porciones, quitá el aire del envase y rotulá con nombre y fecha. Así sabés qué usar primero.',note:'No recongeles un alimento que ya fue descongelado.'},
+      {icon:'🔎',title:'¿Todavía es seguro?',text:'No pruebes un alimento para “ver si está bien” si tiene moho, olor extraño, envase hinchado, textura viscosa o burbujas inesperadas.',note:'Ante una señal de deterioro, descartalo: la seguridad es primero.'}
+    );
     curatedRecipes.push(
       ['Mañana','Huevos revueltos con tomate y queso',['huevo','tomate','queso'],['4 {huevo}','2 {tomate}','120 g de {queso}','10 ml de aceite'], 'Batí los huevos con sal y pimienta. Salteá el tomate en cubos, agregá los huevos y revolvé suavemente. Sumá el queso al final y serví cuando esté fundido.',15],
       ['Mañana','Tostado de pan, huevo y queso',['pan','huevo','queso'],['4 rebanadas de {pan}','2 {huevo}','140 g de {queso}','10 g de manteca'], 'Cociná los huevos revueltos. Rellená el pan con huevo y queso, untá apenas con manteca y dorá en sartén hasta que el queso se funda.',15],
