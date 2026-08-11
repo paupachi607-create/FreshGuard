@@ -280,5 +280,32 @@
     function scaledIngredient(item, people){if(!item.amount||!item.servings)return item.original;let amount=item.amount*people/item.servings;let shown=Number.isInteger(amount)?amount:amount.toFixed(1).replace('.',',');return `${shown} ${item.unit||''} de ${item.name}`.replace(/\s+/g,' ').trim()}
     renderRecipes=async function(meal='Mañana'){document.querySelectorAll('#mealTabs button').forEach(button=>button.classList.toggle('active',button.dataset.meal===meal));let people=Number($('#servings')?.value||0),foods=selectedRecipeFoods();if(!people||!foods.length){$('#recipeList').innerHTML='<div class="empty-list">Elegí los alimentos y para cuántas personas vas a cocinar.</div>';return}$('#recipeList').innerHTML='<div class="empty-list">Buscando recetas reales que incluyan todos tus alimentos…</div>';try{let params=new URLSearchParams({ingredients:foods.map(food=>food.name).join('|'),period:meal});let response=await fetch(`/api/recipes?${params}`),data=await response.json();if(!response.ok)throw new Error(data.error||'No se pudo consultar recetas.');let recipes=data.recipes||[];$('#recipeList').innerHTML=recipes.length?recipes.map(recipe=>`<article class="recipe-option"><h3>${recipe.title}</h3><p><b>Ingredientes:</b></p><ul>${recipe.ingredients.map(item=>`<li>${scaledIngredient({...item,servings:recipe.servings},people)}</li>`).join('')}</ul><p>${plainText(recipe.instructions)}</p><small>⏱ ${recipe.readyInMinutes?`${recipe.readyInMinutes} min`:'Tiempo no informado por la fuente'} &nbsp; · &nbsp; 👥 ${people} personas</small>${recipe.sourceUrl?`<a class="recipe-link" href="${recipe.sourceUrl}" target="_blank" rel="noopener">Ver receta original</a>`:''}<a class="recipe-link" href="https://www.pedidosya.com.ar/" target="_blank" rel="noopener">¿Te falta algún producto? pedilo por aquí</a></article>`).join(''):'<div class="empty-list">No encontramos recetas verificadas que incluyan todos los alimentos seleccionados.</div>'}catch(error){$('#recipeList').innerHTML=`<div class="empty-list">${error.message} Revisá la configuración del servicio de recetas.</div>`}}
   </script>
+  <script>
+    function showLocalRecipeMatches(meal, foods, people){let recipes=[...verifiedFallbackRecipes,...curatedRecipes].filter(recipe=>recipe[0]===meal&&foods.every(food=>recipe[2].some(tag=>foodHasTag(food,tag))));let unique=[...new Map(recipes.map(recipe=>[recipe[1],recipe])).values()];return unique.map(recipe=>renderFallbackRecipe(recipe,foods,people)).join('')}
+    renderRecipes=async function(meal='Mañana'){document.querySelectorAll('#mealTabs button').forEach(button=>button.classList.toggle('active',button.dataset.meal===meal));let people=Number($('#servings')?.value||0),foods=selectedRecipeFoods();if(!people||!foods.length){$('#recipeList').innerHTML='<div class="empty-list">Elegí los alimentos y para cuántas personas vas a cocinar.</div>';return}$('#recipeList').innerHTML='<div class="empty-list">Buscando recetas que usen todos tus alimentos…</div>';let online=[];try{let params=new URLSearchParams({ingredients:foods.map(food=>food.name).join('|'),period:meal});let response=await fetch(`/api/recipes?${params}`);if(response.ok)online=(await response.json()).recipes||[]}catch(error){}if(online.length){$('#recipeList').innerHTML=online.map(recipe=>{let ingredients=recipe.ingredients||[];return `<article class="recipe-option"><h3>${recipe.title}</h3><p><b>Ingredientes:</b></p><ul>${ingredients.map(item=>`<li>${scaledIngredient({...item,servings:recipe.servings},people)}</li>`).join('')}</ul><p>${plainText(recipe.instructions)}</p><small>⏱ ${recipe.readyInMinutes?`${recipe.readyInMinutes} min`:'Tiempo no informado por la fuente'} &nbsp; · &nbsp; 👥 ${people} personas</small>${recipe.sourceUrl?`<a class="recipe-link" href="${recipe.sourceUrl}" target="_blank" rel="noopener">Ver receta original</a>`:''}<a class="recipe-link" href="https://www.pedidosya.com.ar/" target="_blank" rel="noopener">¿Te falta algún producto? pedilo por aquí</a></article>`}).join('');return}let local=showLocalRecipeMatches(meal,foods,people);$('#recipeList').innerHTML=local||'<div class="empty-list">No hay una receta real disponible para esta combinación exacta. Probá con otra combinación de alimentos.</div>'}
+  </script>
+  <script>
+    /* Si la combinación existe pero no corresponde al momento elegido, guiamos al usuario. */
+    function freshguardLocalMatches(period, foods){
+      const source=[...verifiedFallbackRecipes,...curatedRecipes];
+      const matches=source.filter(recipe=>recipe[0]===period&&foods.every(food=>recipe[2].some(tag=>foodHasTag(food,tag))));
+      return [...new Map(matches.map(recipe=>[recipe[1],recipe])).values()];
+    }
+    renderRecipes=async function(meal='Mañana'){
+      document.querySelectorAll('#mealTabs button').forEach(button=>button.classList.toggle('active',button.dataset.meal===meal));
+      const people=Number($('#servings')?.value||0),foods=selectedRecipeFoods();
+      if(!people||!foods.length){$('#recipeList').innerHTML='<div class="empty-list">Elegí los alimentos y para cuántas personas vas a cocinar.</div>';return}
+      const local=freshguardLocalMatches(meal,foods);
+      if(local.length){$('#recipeList').innerHTML=local.map(recipe=>renderFallbackRecipe(recipe,foods,people)).join('');return}
+      const available=['Mañana','Mediodía','Tarde','Noche'].filter(period=>freshguardLocalMatches(period,foods).length);
+      if(available.length){
+        const recommended=available[0],recipes=freshguardLocalMatches(recommended,foods);
+        document.querySelectorAll('#mealTabs button').forEach(button=>button.classList.toggle('active',button.dataset.meal===recommended));
+        $('#recipeList').innerHTML=recipes.map(recipe=>renderFallbackRecipe(recipe,foods,people)).join('');
+        return;
+      }
+      $('#recipeList').innerHTML='<div class="empty-list">Todavía no encontramos una receta real que use todos estos alimentos juntos. Probá con otra combinación.</div>';
+    };
+  </script>
 </body>
 </html>
