@@ -272,14 +272,19 @@
       ['Noche','Guiso de pollo, papa y tomate',['pollo','papa','tomate'],['350 g de {pollo}','500 g de {papa}','3 {tomate}','1 cebolla','500 ml de caldo'],'Rehogá cebolla y pollo, agregá tomate, papa en cubos y caldo. Cociná hasta que la papa esté tierna.',45],
       ['Noche','Arroz al horno con tomate y queso',['arroz','tomate'],['250 g de {arroz} cocido','3 {tomate}','180 g de queso','1 cebolla','15 ml de aceite'],'Mezclá arroz con tomate y cebolla salteada, pasá a una fuente, cubrí con queso y gratiná.',35]
     ];
-    function recipeStepByStep(text){
+    function recipeStepByStep(text,title=''){
       const actionWords='agregá|sumá|incorporá|cociná|horneá|mezclá|batí|salteá|dorá|rellená|cubrí|pasá|serví|terminá|gratiná|estirá|dejá|armá|licuá|calentá|revolvé|rehogá|cortá';
       const actions=text.replace(/[.!?;]/g,'|').replace(new RegExp(`,\\s+(?=(?:${actionWords})\\b)`,'gi'),'|').split('|').map(step=>step.trim()).filter(Boolean);
-      const steps=['Reuní y medí los ingredientes indicados para la cantidad de personas elegida.',...actions];
-      if(!actions.some(step=>/serví|terminá/.test(normText(step))))steps.push('Serví la preparación caliente o fría, según corresponda, apenas esté lista.');
+      const recipeName=normText(title);
+      const steps=['Lavá tus manos, limpiá la mesada y reuní todos los ingredientes antes de empezar.','Medí las cantidades indicadas. Lavá, pelá o cortá los alimentos que lo necesiten en una tabla limpia.'];
+      if(/horne|pizza|budin|muffin|tarta|gratin/.test(recipeName+normText(text)))steps.push('Prendé el horno y precalentalo a la temperatura indicada. Prepará una fuente o placa apenas aceitada.');
+      if(/fideo|pasta|macarron/.test(recipeName))steps.push('Poné una olla grande con agua y una cucharadita de sal a hervir. Cociná la pasta hasta que esté tierna pero firme y escurrila.');
+      if(/arroz/.test(recipeName)&&!/arroz con leche/.test(recipeName))steps.push('Tené agua o caldo caliente listo. Cociná el arroz a fuego medio y agregá líquido de a poco para que no se pegue.');
+      steps.push(...actions);
+      if(!actions.some(step=>/serví|terminá/.test(normText(step))))steps.push('Probá con cuidado, ajustá sal o condimentos si hace falta y serví apenas esté listo.');
       return steps.map((step,index)=>`<li><b>Paso ${index+1}.</b> ${step}</li>`).join('');
     }
-    function renderFallbackRecipe(recipe,foods,people){return `<article class="recipe-option"><h3>${recipe[1]}</h3><p><b>Ingredientes:</b></p><ul>${recipe[3].map(ingredient=>`<li>${fillRecipeText(ingredient,foods,people)}</li>`).join('')}</ul><p><b>Preparación paso a paso:</b></p><ul>${recipeStepByStep(recipe[4])}</ul><small>⏱ ${recipe[5]} min &nbsp; · &nbsp; 👥 ${people} personas</small><a class="recipe-link" href="https://www.pedidosya.com.ar/" target="_blank" rel="noopener">¿Te falta algún producto? pedilo por aquí</a></article>`}
+    function renderFallbackRecipe(recipe,foods,people){return `<article class="recipe-option"><h3>${recipe[1]}</h3><p><b>Ingredientes:</b></p><ul>${recipe[3].map(ingredient=>`<li>${fillRecipeText(ingredient,foods,people)}</li>`).join('')}</ul><p><b>Preparación paso a paso:</b></p><ul>${recipeStepByStep(recipe[4],recipe[1])}</ul><small>⏱ ${recipe[5]} min &nbsp; · &nbsp; 👥 ${people} personas</small><a class="recipe-link" href="https://www.pedidosya.com.ar/" target="_blank" rel="noopener">¿Te falta algún producto? pedilo por aquí</a></article>`}
     renderRecipes=async function(meal='Mañana'){document.querySelectorAll('#mealTabs button').forEach(button=>button.classList.toggle('active',button.dataset.meal===meal));let people=Number($('#servings')?.value||0),foods=selectedRecipeFoods();if(!people||!foods.length){$('#recipeList').innerHTML='<div class="empty-list">Elegí los alimentos y para cuántas personas vas a cocinar.</div>';return}$('#recipeList').innerHTML='<div class="empty-list">Buscando recetas reales que incluyan todos tus alimentos…</div>';let online=[];try{online=await findVerifiedOnlineRecipes(foods,meal)}catch(error){}if(online.length){$('#recipeList').innerHTML=online.map(recipe=>{let ingredients=mealIngredients(recipe);return `<article class="recipe-option"><h3>${recipe.strMeal}</h3><p><b>Ingredientes:</b></p><ul>${ingredients.map(item=>`<li>${item.measure} de ${item.ingredient}</li>`).join('')}</ul><p>${recipe.strInstructions}</p><small>⏱ Tiempo no informado por la fuente &nbsp; · &nbsp; 👥 ${people} personas</small><a class="recipe-link" href="https://www.pedidosya.com.ar/" target="_blank" rel="noopener">¿Te falta algún producto? pedilo por aquí</a></article>`}).join('');return}let local=[...verifiedFallbackRecipes,...curatedRecipes].filter(recipe=>recipe[0]===meal&&matchesEverySelectedFood(recipe,foods));$('#recipeList').innerHTML=local.length?local.map(recipe=>renderFallbackRecipe(recipe,foods,people)).join(''):'<div class="empty-list">No hay una receta real registrada para esta combinación exacta. No vamos a inventar una receta que omita alguno de tus alimentos.</div>'}
   </script>
   <script>
@@ -307,6 +312,19 @@
       {icon:'❄️',title:'Congelá con fecha',text:'Dividí en porciones, quitá el aire del envase y rotulá con nombre y fecha. Así sabés qué usar primero.',note:'No recongeles un alimento que ya fue descongelado.'},
       {icon:'🔎',title:'¿Todavía es seguro?',text:'No pruebes un alimento para “ver si está bien” si tiene moho, olor extraño, envase hinchado, textura viscosa o burbujas inesperadas.',note:'Ante una señal de deterioro, descartalo: la seguridad es primero.'}
     );
+    extraTips.splice(0,extraTips.length,
+      {icon:'🔪',title:'Cuchillo y tabla',text:'Usá una tabla firme sobre un repasador húmedo para que no se deslice. Mantené los dedos doblados hacia adentro al cortar.',note:'Separá la tabla de carne cruda de la de verduras listas para comer.'},
+      {icon:'🧂',title:'Condimentá de a poco',text:'Agregá sal y condimentos en pequeñas cantidades mientras cocinás. Probá recién cuando la comida esté casi lista.',note:'Siempre podés sumar, pero es difícil arreglar un plato muy salado.'},
+      {icon:'🔥',title:'No apures el fuego',text:'Usá fuego medio para saltear y dorar sin quemar. Si el aceite humea, bajá la hornalla antes de agregar los alimentos.',note:'Una sartén muy llena enfría la cocción: cociná en tandas si hace falta.'},
+      {icon:'🧅',title:'Base para comidas sabrosas',text:'Cebolla, ajo y morrón se cocinan primero a fuego bajo hasta quedar tiernos. Esa base mejora guisos, arroces y salsas.',note:'Revolvé cada tanto para que no se peguen al fondo.'},
+      {icon:'🍝',title:'Pasta al dente',text:'Esperá a que el agua hierva fuerte, agregá sal y después los fideos. Revolvé al comienzo y probalos antes de escurrir.',note:'Reservá media taza del agua de cocción para ligar la salsa.'},
+      {icon:'🍚',title:'Arroz sin pegarse',text:'Lavá el arroz si querés que quede más suelto. Cocinalo tapado a fuego bajo y evitá revolverlo constantemente.',note:'Al apagar, dejalo reposar tapado 5 minutos antes de servir.'},
+      {icon:'🥚',title:'Huevos bien cocidos',text:'Para revueltos, cociná a fuego bajo y retiralos cuando todavía estén cremosos. Para tortilla, mové la sartén y cociná despacio.',note:'El huevo sigue cocinándose unos minutos con el calor residual.'},
+      {icon:'🥣',title:'Mezclas y masas',text:'Medí primero los ingredientes. Al unir harina con líquidos, mezclá solo hasta que no queden partes secas para no endurecer la masa.',note:'En budines y panqueques, una sartén o molde apenas aceitado alcanza.'},
+      {icon:'🧀',title:'Queso al final',text:'Agregá queso cuando la preparación ya está caliente y bajá el fuego. Así se funde parejo sin endurecerse ni largar aceite.',note:'Tapá la sartén uno o dos minutos para ayudar a que se derrita.'},
+      {icon:'⏱️',title:'Probá antes de servir',text:'Revisá textura, punto de cocción y sabor. Si está seco, agregá una cucharada de agua, caldo o salsa y calentá un minuto más.',note:'Serví la comida apenas esté lista para aprovechar mejor su temperatura y textura.'}
+    );
+    if(typeof renderTip==='function')renderTip();
     curatedRecipes.push(
       ['Mañana','Huevos revueltos con tomate y queso',['huevo','tomate','queso'],['4 {huevo}','2 {tomate}','120 g de {queso}','10 ml de aceite'], 'Batí los huevos con sal y pimienta. Salteá el tomate en cubos, agregá los huevos y revolvé suavemente. Sumá el queso al final y serví cuando esté fundido.',15],
       ['Mañana','Tostado de pan, huevo y queso',['pan','huevo','queso'],['4 rebanadas de {pan}','2 {huevo}','140 g de {queso}','10 g de manteca'], 'Cociná los huevos revueltos. Rellená el pan con huevo y queso, untá apenas con manteca y dorá en sartén hasta que el queso se funda.',15],
