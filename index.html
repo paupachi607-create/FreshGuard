@@ -291,7 +291,7 @@
       }
       return steps.map((step,index)=>`<li><b>Paso ${index+1}.</b> ${step}</li>`).join('');
     }
-    function renderFallbackRecipe(recipe,foods,people){return `<article class="recipe-option"><h3>${recipe[1]}</h3><p><b>Ingredientes:</b></p><ul>${recipe[3].map(ingredient=>`<li>${fillRecipeText(ingredient,foods,people)}</li>`).join('')}</ul><p><b>Preparación paso a paso:</b></p><ul>${recipeStepByStep(recipe[4],recipe[1])}</ul><small>⏱ ${recipe[5]} min &nbsp; · &nbsp; 👥 ${people} personas</small><a class="recipe-link" href="https://www.pedidosya.com.ar/" target="_blank" rel="noopener">¿Te falta algún producto? pedilo por aquí</a></article>`}
+    function renderFallbackRecipe(recipe,foods,people){const missing=freshguardMissingIngredients(recipe,foods);return `<article class="recipe-option"><h3>${recipe[1]}</h3><p><b>Ingredientes:</b></p><ul>${recipe[3].map(ingredient=>`<li>${fillRecipeText(ingredient,foods,people)}</li>`).join('')}</ul>${missing.length?`<p><b>Te falta:</b> 🛒 ${missing.join(' · ')}</p>`:'<p><b>✓ Tenés los ingredientes principales.</b></p>'}<p><b>Preparación paso a paso:</b></p><ul>${recipeStepByStep(recipe[4],recipe[1])}</ul><small>⏱ ${recipe[5]} min &nbsp; · &nbsp; 👥 ${people} personas</small><a class="recipe-link" href="https://www.pedidosya.com.ar/" target="_blank" rel="noopener">¿Te falta algún producto? pedilo por aquí</a></article>`}
     renderRecipes=async function(meal='Mañana'){document.querySelectorAll('#mealTabs button').forEach(button=>button.classList.toggle('active',button.dataset.meal===meal));let people=Number($('#servings')?.value||0),foods=selectedRecipeFoods();if(!people||!foods.length){$('#recipeList').innerHTML='<div class="empty-list">Elegí los alimentos y para cuántas personas vas a cocinar.</div>';return}$('#recipeList').innerHTML='<div class="empty-list">Buscando recetas reales que incluyan todos tus alimentos…</div>';let online=[];try{online=await findVerifiedOnlineRecipes(foods,meal)}catch(error){}if(online.length){$('#recipeList').innerHTML=online.map(recipe=>{let ingredients=mealIngredients(recipe);return `<article class="recipe-option"><h3>${recipe.strMeal}</h3><p><b>Ingredientes:</b></p><ul>${ingredients.map(item=>`<li>${item.measure} de ${item.ingredient}</li>`).join('')}</ul><p>${recipe.strInstructions}</p><small>⏱ Tiempo no informado por la fuente &nbsp; · &nbsp; 👥 ${people} personas</small><a class="recipe-link" href="https://www.pedidosya.com.ar/" target="_blank" rel="noopener">¿Te falta algún producto? pedilo por aquí</a></article>`}).join('');return}let local=[...verifiedFallbackRecipes,...curatedRecipes].filter(recipe=>recipe[0]===meal&&matchesEverySelectedFood(recipe,foods));$('#recipeList').innerHTML=local.length?local.map(recipe=>renderFallbackRecipe(recipe,foods,people)).join(''):'<div class="empty-list">No hay una receta real registrada para esta combinación exacta. No vamos a inventar una receta que omita alguno de tus alimentos.</div>'}
   </script>
   <script>
@@ -305,6 +305,23 @@
   </script>
   <script>
     /* Si la combinación existe pero no corresponde al momento elegido, guiamos al usuario. */
+    const freshguardCommonFoods={
+      'Carnes y fiambres':['Pollo','Pechuga de pollo','Carne picada','Carne vacuna','Cerdo','Pescado','Atún en lata','Sardinas','Jamón','Paleta','Salame','Huevos'],
+      'Lácteos':['Leche','Yogur','Yogur natural','Queso cremoso','Queso fresco','Queso rallado','Mozzarella','Queso untable','Manteca','Crema de leche'],
+      'Frutas y verduras':['Papa','Batata','Cebolla','Ajo','Tomate','Zanahoria','Morrón','Lechuga','Espinaca','Acelga','Zapallito','Zucchini','Calabaza','Brócoli','Coliflor','Choclo','Berenjena','Pepino','Repollo','Remolacha','Arvejas','Banana','Manzana','Pera','Naranja','Mandarina','Limón','Frutilla','Durazno','Ciruela','Kiwi','Uvas','Ananá','Melón','Sandía'],
+      'Panificados':['Pan','Pan lactal','Pan rallado','Tortillas','Tapas de empanadas','Tapas de tarta'],
+      'Enlatados y secos':['Arroz','Fideos','Espaguetis','Tallarines','Avena','Harina de trigo','Harina integral','Polenta','Lentejas','Garbanzos','Porotos','Tomate en lata','Salsa de tomate','Puré de tomate','Atún','Choclo','Arvejas'],
+      'Varios':['Miel','Mermelada','Dulce de leche','Cacao','Chocolate','Maní','Nueces','Almendras','Pasas de uva','Aceite']
+    };
+    const foodNameInput=$('#foodName'),foodQtyInput=$('#foodQty');
+    foodQtyInput.type='number';foodQtyInput.min='0.01';foodQtyInput.step='0.01';foodQtyInput.required=true;foodQtyInput.placeholder='Ej: 500';
+    foodNameInput.setAttribute('list','freshguardCommonFoods');
+    if(!$('#freshguardCommonFoods'))document.body.insertAdjacentHTML('beforeend',`<datalist id="freshguardCommonFoods">${Object.entries(freshguardCommonFoods).flatMap(([category,names])=>names.map(name=>`<option value="${name}" label="${category}"></option>`)).join('')}</datalist>`);
+    if(!$('#foodUnit'))foodQtyInput.closest('.field').insertAdjacentHTML('afterend','<div class="field"><label>Unidad de medida <span>*</span></label><select id="foodUnit" required></select></div>');
+    const foodUnitInput=$('#foodUnit');
+    function freshguardUnits(){const name=normText(foodNameInput.value),category=$('#foodCategory').value;let units=['unidades'];if(/leche|aceite|crema|liquido|salsa|pure/.test(name))units=['ml','litros'];else if(/carne|pollo|pescado|queso|arroz|fideo|espagueti|tallar|avena|harina|polenta|lenteja|garbanzo|poroto|cereal|cacao/.test(name))units=['gramos','kilogramos'];else if(category==='Frutas y verduras')units=['unidades','gramos','kilogramos'];else if(category==='Lácteos')units=/yogur/.test(name)?['unidades','gramos','ml']:['gramos','kilogramos'];foodUnitInput.innerHTML=units.map(unit=>`<option value="${unit}">${unit}</option>`).join('')}
+    foodNameInput.addEventListener('input',freshguardUnits);$('#foodCategory').addEventListener('change',freshguardUnits);freshguardUnits();
+    $('#foodForm').addEventListener('submit',event=>{event.preventDefault();event.stopImmediatePropagation();const name=foodNameInput.value.trim(),amount=Number(foodQtyInput.value),unit=foodUnitInput.value;if(!name||!amount||!unit)return;const duplicate=foods.some(food=>normText(food.name)===normText(name));if(duplicate){showToast('Ese alimento ya está registrado. Revisá tu lista.');return}foods.push({id:Date.now().toString(),name,category:$('#foodCategory').value,amount,unit,qty:`${amount} ${unit}`,date:$('#foodDate').value,storage:$('#foodStorage').value});save();event.target.reset();freshguardUnits();renderFoods();renderDue();showToast('¡Alimento guardado con cantidad y unidad!')},true);
     extraTips.splice(0,extraTips.length,
       {icon:'🍌',title:'Separá las frutas que maduran rápido',text:'Banana, manzana, pera, palta y tomate liberan etileno: un gas natural que acelera la maduración de otros alimentos.',note:'Mantenelos lejos de hojas verdes, brócoli, pepino y frutillas.'},
       {icon:'🥛',title:'Lácteos: al fondo de la heladera',text:'Leche, yogur y queso se conservan mejor en el estante interior más frío. La puerta cambia de temperatura cada vez que se abre.',note:'Cerrá bien los envases y usá utensilios limpios para no contaminarlos.'},
@@ -359,10 +376,16 @@
       const text=normText([recipe[1],...recipe[2],...recipe[3],recipe[4]].join(' ')).split(/[^a-z0-9]+/).map(freshguardRecipeWord);
       return wanted.every(word=>text.includes(word));
     }
-    function freshguardLocalMatches(period, foods){
+    function freshguardMissingIngredients(recipe,foods){
+      const basics=new Set(['agua','sal','pimienta','aceite','vinagre','azucar','oregano','pimenton','canela','comino','provenzal']);
+      return (recipe[3]||[]).filter(line=>{const words=normText(line).split(/[^a-z0-9]+/).map(freshguardRecipeWord);const alreadyHave=foods.some(food=>normText(food.name).split(/\s+/).map(freshguardRecipeWord).some(word=>words.includes(word)));return !alreadyHave&&!words.some(word=>basics.has(word))}).map(line=>line.replace(/^\d+(?:[.,]\d+)?\s*(?:g|ml|gramos?|litros?|unidades?|cdas?|cdta)?\s*(?:de)?\s*/i,'').replace(/\{([^}]+)\}/g,'$1')).filter((item,index,array)=>array.indexOf(item)===index);
+    }
+    function freshguardComparableAmount(amount,unit){const u=normText(unit||'');if(u==='kilogramos'||u==='kilogramo'||u==='kg')return {type:'weight',value:amount*1000};if(u==='gramos'||u==='gramo'||u==='g')return {type:'weight',value:amount};if(u==='litros'||u==='litro'||u==='l')return {type:'volume',value:amount*1000};if(u==='ml'||u==='mililitros'||u==='mililitro')return {type:'volume',value:amount};if(u.includes('unidad'))return {type:'count',value:amount};return null}
+    function freshguardHasEnough(recipe,food,people){if(!food.amount||!food.unit)return true;const known=new Set(['arroz','tomate','pollo','papa','banana','leche','avena','harina','pan','queso','huevo','fideo','lenteja','atun','carne','jamon','yogur','cacao','cebolla','zanahoria','polenta','mermelada','cereal','galleta']);const words=normText(food.name).split(/\s+/).map(freshguardRecipeWord),wanted=words.find(word=>known.has(word))||words[0];const ingredient=(recipe[3]||[]).find(line=>normText(line).split(/[^a-z0-9]+/).map(freshguardRecipeWord).includes(wanted));if(!ingredient)return true;const match=ingredient.match(/\d+(?:[.,]\d+)?/);if(!match)return true;const need=Number(match[0].replace(',','.'))*people/2;const unit=normText(ingredient);const neededUnit=/\bml\b|mililitro/.test(unit)?'ml':/litro/.test(unit)?'litros':/kilogramo|\bkg\b/.test(unit)?'kilogramos':/gramo|\bg\b/.test(unit)?'gramos':/unidad|tomate|banana|huevo|papa|cebolla/.test(unit)?'unidades':'';const available=freshguardComparableAmount(Number(food.amount),food.unit),required=freshguardComparableAmount(need,neededUnit);return !available||!required||available.type!==required.type||available.value+0.001>=required.value}
+    function freshguardLocalMatches(period, foods, people=2){
       const source=[...verifiedFallbackRecipes,...curatedRecipes];
       /* Todos los alimentos seleccionados son obligatorios; los demás ingredientes sí pueden sumarse. */
-      const matches=source.filter(recipe=>recipe[0]===period&&foods.every(food=>freshguardHasFood(recipe,food)));
+      const matches=source.filter(recipe=>recipe[0]===period&&foods.every(food=>freshguardHasFood(recipe,food)&&freshguardHasEnough(recipe,food,people)));
       const seen=new Set();
       return matches.filter(recipe=>{
         /* La preparación y sus ingredientes obligatorios forman una huella única. */
@@ -378,9 +401,9 @@
       document.querySelectorAll('#mealTabs button').forEach(button=>button.classList.toggle('active',button.dataset.meal===meal));
       const people=Number($('#servings')?.value||0),foods=selectedRecipeFoods();
       if(!people||!foods.length){$('#recipeList').innerHTML='<div class="empty-list">Elegí los alimentos y para cuántas personas vas a cocinar.</div>';return}
-      const local=freshguardLocalMatches(meal,foods);
+      const local=freshguardLocalMatches(meal,foods,people);
       if(local.length){$('#recipeList').innerHTML=local.map(recipe=>renderFallbackRecipe(recipe,foods,people)).join('');return}
-      const available=['Mañana','Mediodía','Tarde','Noche'].filter(period=>freshguardLocalMatches(period,foods).length);
+      const available=['Mañana','Mediodía','Tarde','Noche'].filter(period=>freshguardLocalMatches(period,foods,people).length);
       if(available.length){
         $('#recipeList').innerHTML=`<div class="empty-list">Estos alimentos no suelen usarse para <b>${meal}</b>. Encontrá recetas reales con <b>${foods.map(food=>food.name).join(' + ')}</b> en: <b>${available.join(' y ')}</b>.</div>`;
         return;
