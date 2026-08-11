@@ -275,13 +275,20 @@
     function recipeStepByStep(text,title=''){
       const actionWords='agregá|sumá|incorporá|cociná|horneá|mezclá|batí|salteá|dorá|rellená|cubrí|pasá|serví|terminá|gratiná|estirá|dejá|armá|licuá|calentá|revolvé|rehogá|cortá';
       const actions=text.replace(/[.!?;]/g,'|').replace(new RegExp(`,\\s+(?=(?:${actionWords})\\b)`,'gi'),'|').split('|').map(step=>step.trim()).filter(Boolean);
-      const recipeName=normText(title);
-      const steps=['Lavá tus manos, limpiá la mesada y reuní todos los ingredientes antes de empezar.','Medí las cantidades indicadas. Lavá, pelá o cortá los alimentos que lo necesiten en una tabla limpia.'];
-      if(/horne|pizza|budin|muffin|tarta|gratin/.test(recipeName+normText(text)))steps.push('Prendé el horno y precalentalo a la temperatura indicada. Prepará una fuente o placa apenas aceitada.');
-      if(/fideo|pasta|macarron/.test(recipeName))steps.push('Poné una olla grande con agua y una cucharadita de sal a hervir. Cociná la pasta hasta que esté tierna pero firme y escurrila.');
-      if(/arroz/.test(recipeName)&&!/arroz con leche/.test(recipeName))steps.push('Tené agua o caldo caliente listo. Cociná el arroz a fuego medio y agregá líquido de a poco para que no se pegue.');
+      const recipeName=normText(title),allText=recipeName+normText(text);
+      const steps=['Lavá tus manos y limpiá la mesada. Medí todos los ingredientes antes de encender la hornalla o el horno.','Lavá, pelá o cortá los alimentos que lo necesiten. Dejá cada ingrediente listo en recipientes separados para no apurarte durante la cocción.'];
+      if(/horne|pizza|budin|muffin|tarta|gratin/.test(allText))steps.push('Encendé el horno a la temperatura indicada y dejalo calentar 10 minutos. Aceitá apenas el molde, la fuente o la placa antes de usarla.');
+      if(/fideo|pasta|macarron/.test(recipeName))steps.push('Llená una olla grande con agua, llevala a hervor fuerte, agregá sal y después los fideos. Revolvé al inicio y escurrilos cuando estén tiernos pero todavía firmes.');
+      if(/arroz/.test(recipeName)&&!/arroz con leche/.test(recipeName))steps.push('Usá una olla de base gruesa. Mantené agua o caldo caliente cerca y cociná el arroz a fuego medio-bajo, revolviendo solo cuando la receta lo indique.');
+      if(/tortilla|omelette|huevo revuelto/.test(recipeName))steps.push('Rompé los huevos en un bowl, batilos con tenedor hasta unir clara y yema, y prepará una sartén antiadherente con un poco de aceite a fuego bajo.');
+      if(/sandwich|tostado|tostada|bruschetta/.test(recipeName))steps.push('Calentá una sartén o tostadora a fuego medio. Tené el pan, el relleno y una espátula listos para armar y dar vuelta sin que se queme.');
       steps.push(...actions);
-      if(!actions.some(step=>/serví|terminá/.test(normText(step))))steps.push('Probá con cuidado, ajustá sal o condimentos si hace falta y serví apenas esté listo.');
+      if(!actions.some(step=>/serví|terminá/.test(normText(step)))){
+        if(/horne|pizza|budin|muffin|tarta|gratin/.test(allText))steps.push('Retirá con cuidado. Comprobá que los bordes estén dorados y, si es un budín o muffin, pinchá el centro: el palillo debe salir sin masa cruda.');
+        else if(/arroz/.test(recipeName))steps.push('Apagá el fuego, tapá la olla y dejá reposar 5 minutos. Separá los granos con un tenedor antes de servir.');
+        else if(/fideo|pasta|macarron/.test(recipeName))steps.push('Mezclá la pasta con la salsa durante un minuto para que se impregne bien. Agregá queso o hierbas justo antes de llevar a la mesa.');
+        else steps.push('Apagá el fuego cuando todos los ingredientes estén cocidos. Probá una porción, corregí sal o condimentos si hace falta y pasá al plato con una espátula o cuchara.');
+      }
       return steps.map((step,index)=>`<li><b>Paso ${index+1}.</b> ${step}</li>`).join('');
     }
     function renderFallbackRecipe(recipe,foods,people){return `<article class="recipe-option"><h3>${recipe[1]}</h3><p><b>Ingredientes:</b></p><ul>${recipe[3].map(ingredient=>`<li>${fillRecipeText(ingredient,foods,people)}</li>`).join('')}</ul><p><b>Preparación paso a paso:</b></p><ul>${recipeStepByStep(recipe[4],recipe[1])}</ul><small>⏱ ${recipe[5]} min &nbsp; · &nbsp; 👥 ${people} personas</small><a class="recipe-link" href="https://www.pedidosya.com.ar/" target="_blank" rel="noopener">¿Te falta algún producto? pedilo por aquí</a></article>`}
