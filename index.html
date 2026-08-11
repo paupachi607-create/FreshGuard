@@ -266,7 +266,11 @@
       ['Noche','Guiso de pollo, papa y tomate',['pollo','papa','tomate'],['350 g de {pollo}','500 g de {papa}','3 {tomate}','1 cebolla','500 ml de caldo'],'Rehogá cebolla y pollo, agregá tomate, papa en cubos y caldo. Cociná hasta que la papa esté tierna.',45],
       ['Noche','Arroz al horno con tomate y queso',['arroz','tomate'],['250 g de {arroz} cocido','3 {tomate}','180 g de queso','1 cebolla','15 ml de aceite'],'Mezclá arroz con tomate y cebolla salteada, pasá a una fuente, cubrí con queso y gratiná.',35]
     ];
-    function renderFallbackRecipe(recipe,foods,people){return `<article class="recipe-option"><h3>${recipe[1]}</h3><p><b>Ingredientes:</b></p><ul>${recipe[3].map(ingredient=>`<li>${fillRecipeText(ingredient,foods,people)}</li>`).join('')}</ul><p>${recipe[4]}</p><small>⏱ ${recipe[5]} min &nbsp; · &nbsp; 👥 ${people} personas</small><a class="recipe-link" href="https://www.pedidosya.com.ar/" target="_blank" rel="noopener">¿Te falta algún producto? pedilo por aquí</a></article>`}
+    function recipeStepByStep(text){
+      const steps=text.split(/(?<=[.!?;])\s+|,\s+(?=[a-záéíóúñ])/i).map(step=>step.trim()).filter(Boolean);
+      return steps.map((step,index)=>`<li><b>Paso ${index+1}.</b> ${step}</li>`).join('');
+    }
+    function renderFallbackRecipe(recipe,foods,people){return `<article class="recipe-option"><h3>${recipe[1]}</h3><p><b>Ingredientes:</b></p><ul>${recipe[3].map(ingredient=>`<li>${fillRecipeText(ingredient,foods,people)}</li>`).join('')}</ul><p><b>Preparación paso a paso:</b></p><ul>${recipeStepByStep(recipe[4])}</ul><small>⏱ ${recipe[5]} min &nbsp; · &nbsp; 👥 ${people} personas</small><a class="recipe-link" href="https://www.pedidosya.com.ar/" target="_blank" rel="noopener">¿Te falta algún producto? pedilo por aquí</a></article>`}
     renderRecipes=async function(meal='Mañana'){document.querySelectorAll('#mealTabs button').forEach(button=>button.classList.toggle('active',button.dataset.meal===meal));let people=Number($('#servings')?.value||0),foods=selectedRecipeFoods();if(!people||!foods.length){$('#recipeList').innerHTML='<div class="empty-list">Elegí los alimentos y para cuántas personas vas a cocinar.</div>';return}$('#recipeList').innerHTML='<div class="empty-list">Buscando recetas reales que incluyan todos tus alimentos…</div>';let online=[];try{online=await findVerifiedOnlineRecipes(foods,meal)}catch(error){}if(online.length){$('#recipeList').innerHTML=online.map(recipe=>{let ingredients=mealIngredients(recipe);return `<article class="recipe-option"><h3>${recipe.strMeal}</h3><p><b>Ingredientes:</b></p><ul>${ingredients.map(item=>`<li>${item.measure} de ${item.ingredient}</li>`).join('')}</ul><p>${recipe.strInstructions}</p><small>⏱ Tiempo no informado por la fuente &nbsp; · &nbsp; 👥 ${people} personas</small><a class="recipe-link" href="https://www.pedidosya.com.ar/" target="_blank" rel="noopener">¿Te falta algún producto? pedilo por aquí</a></article>`}).join('');return}let local=[...verifiedFallbackRecipes,...curatedRecipes].filter(recipe=>recipe[0]===meal&&matchesEverySelectedFood(recipe,foods));$('#recipeList').innerHTML=local.length?local.map(recipe=>renderFallbackRecipe(recipe,foods,people)).join(''):'<div class="empty-list">No hay una receta real registrada para esta combinación exacta. No vamos a inventar una receta que omita alguno de tus alimentos.</div>'}
   </script>
   <script>
@@ -280,9 +284,23 @@
   </script>
   <script>
     /* Si la combinación existe pero no corresponde al momento elegido, guiamos al usuario. */
+    function freshguardRecipeWord(value){
+      const word=normText(value).trim().replace(/s$/,'');
+      const aliases={fideos:'fideo',pasta:'fideo',macarrones:'fideo',tomates:'tomate',papas:'papa',huevos:'huevo',bananas:'banana',lacteo:'leche',lacteos:'leche',fiambres:'jamon',fiambre:'jamon',atun:'atun'};
+      return aliases[word]||word;
+    }
+    function freshguardHasFood(recipe, food){
+      const words=normText(food.name).split(/\s+/).map(freshguardRecipeWord).filter(Boolean);
+      const foodNames=new Set(['arroz','tomate','pollo','papa','banana','leche','avena','harina','pan','queso','huevo','fideo','lenteja','atun','carne','jamon','yogur','cacao','cebolla','zanahoria','polenta','mermelada','cereal','galleta']);
+      const wanted=words.filter(word=>foodNames.has(word));
+      if(!wanted.length)wanted.push(words[0]);
+      const text=normText([recipe[1],...recipe[2],...recipe[3],recipe[4]].join(' ')).split(/[^a-z0-9]+/).map(freshguardRecipeWord);
+      return wanted.every(word=>text.includes(word));
+    }
     function freshguardLocalMatches(period, foods){
       const source=[...verifiedFallbackRecipes,...curatedRecipes];
-      const matches=source.filter(recipe=>recipe[0]===period&&foods.every(food=>recipe[2].some(tag=>foodHasTag(food,tag))));
+      /* Todos los alimentos seleccionados son obligatorios; los demás ingredientes sí pueden sumarse. */
+      const matches=source.filter(recipe=>recipe[0]===period&&foods.every(food=>freshguardHasFood(recipe,food)));
       const seen=new Set();
       return matches.filter(recipe=>{
         /* La preparación y sus ingredientes obligatorios forman una huella única. */
