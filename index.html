@@ -283,7 +283,16 @@
     function freshguardLocalMatches(period, foods){
       const source=[...verifiedFallbackRecipes,...curatedRecipes];
       const matches=source.filter(recipe=>recipe[0]===period&&foods.every(food=>recipe[2].some(tag=>foodHasTag(food,tag))));
-      return [...new Map(matches.map(recipe=>[recipe[1],recipe])).values()];
+      const seen=new Set();
+      return matches.filter(recipe=>{
+        /* La preparación y sus ingredientes obligatorios forman una huella única. */
+        const title=normText(recipe[1]).replace(/\b(con|de|y|al|a la|casero|casera|rapido|rapida)\b/g,'').replace(/\s+/g,' ').trim();
+        const ingredients=[...recipe[2]].map(normText).sort().join('|');
+        const key=`${title}|${ingredients}`;
+        if(seen.has(key))return false;
+        seen.add(key);
+        return true;
+      });
     }
     renderRecipes=async function(meal='Mañana'){
       document.querySelectorAll('#mealTabs button').forEach(button=>button.classList.toggle('active',button.dataset.meal===meal));
@@ -293,9 +302,7 @@
       if(local.length){$('#recipeList').innerHTML=local.map(recipe=>renderFallbackRecipe(recipe,foods,people)).join('');return}
       const available=['Mañana','Mediodía','Tarde','Noche'].filter(period=>freshguardLocalMatches(period,foods).length);
       if(available.length){
-        const recommended=available[0],recipes=freshguardLocalMatches(recommended,foods);
-        document.querySelectorAll('#mealTabs button').forEach(button=>button.classList.toggle('active',button.dataset.meal===recommended));
-        $('#recipeList').innerHTML=recipes.map(recipe=>renderFallbackRecipe(recipe,foods,people)).join('');
+        $('#recipeList').innerHTML=`<div class="empty-list">Estos alimentos no suelen usarse para <b>${meal}</b>. Encontrá recetas reales con <b>${foods.map(food=>food.name).join(' + ')}</b> en: <b>${available.join(' y ')}</b>.</div>`;
         return;
       }
       $('#recipeList').innerHTML='<div class="empty-list">Todavía no encontramos una receta real que use todos estos alimentos juntos. Probá con otra combinación.</div>';
