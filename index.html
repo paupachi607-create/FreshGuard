@@ -267,7 +267,10 @@
       ['Noche','Arroz al horno con tomate y queso',['arroz','tomate'],['250 g de {arroz} cocido','3 {tomate}','180 g de queso','1 cebolla','15 ml de aceite'],'Mezclá arroz con tomate y cebolla salteada, pasá a una fuente, cubrí con queso y gratiná.',35]
     ];
     function recipeStepByStep(text){
-      const steps=text.split(/(?<=[.!?;])\s+|,\s+(?=[a-záéíóúñ])/i).map(step=>step.trim()).filter(Boolean);
+      const actionWords='agregá|sumá|incorporá|cociná|horneá|mezclá|batí|salteá|dorá|rellená|cubrí|pasá|serví|terminá|gratiná|estirá|dejá|armá|licuá|calentá|revolvé|rehogá|cortá';
+      const actions=text.replace(/[.!?;]/g,'|').replace(new RegExp(`,\\s+(?=(?:${actionWords})\\b)`,'gi'),'|').split('|').map(step=>step.trim()).filter(Boolean);
+      const steps=['Reuní y medí los ingredientes indicados para la cantidad de personas elegida.',...actions];
+      if(!actions.some(step=>/serví|terminá/.test(normText(step))))steps.push('Serví la preparación caliente o fría, según corresponda, apenas esté lista.');
       return steps.map((step,index)=>`<li><b>Paso ${index+1}.</b> ${step}</li>`).join('');
     }
     function renderFallbackRecipe(recipe,foods,people){return `<article class="recipe-option"><h3>${recipe[1]}</h3><p><b>Ingredientes:</b></p><ul>${recipe[3].map(ingredient=>`<li>${fillRecipeText(ingredient,foods,people)}</li>`).join('')}</ul><p><b>Preparación paso a paso:</b></p><ul>${recipeStepByStep(recipe[4])}</ul><small>⏱ ${recipe[5]} min &nbsp; · &nbsp; 👥 ${people} personas</small><a class="recipe-link" href="https://www.pedidosya.com.ar/" target="_blank" rel="noopener">¿Te falta algún producto? pedilo por aquí</a></article>`}
