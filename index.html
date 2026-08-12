@@ -401,12 +401,17 @@
     function freshguardLocalMatches(period, foods, people=2){
       const source=[...verifiedFallbackRecipes,...curatedRecipes];
       /* Todos los alimentos seleccionados son obligatorios; los demás ingredientes sí pueden sumarse. */
-      const matches=source.filter(recipe=>recipe[0]===period&&foods.every(food=>freshguardHasFood(recipe,food)&&freshguardHasEnough(recipe,food,people)));
+      const isLunchOrDinner=period==='Mediodía'||period==='Noche';
+      const matches=source.filter(recipe=>{
+        const compatibleMoment=recipe[0]===period||(isLunchOrDinner&&(recipe[0]==='Mediodía'||recipe[0]==='Noche'));
+        return compatibleMoment&&foods.every(food=>freshguardHasFood(recipe,food)&&freshguardHasEnough(recipe,food,people));
+      });
       const seen=new Set();
       return matches.filter(recipe=>{
         /* La preparación y sus ingredientes obligatorios forman una huella única. */
-        const title=normText(recipe[1]).replace(/\b(con|de|y|al|a la|casero|casera|rapido|rapida)\b/g,'').replace(/\s+/g,' ').trim();
-        const ingredients=[...recipe[2]].map(normText).sort().join('|');
+        const title=normText(recipe[1]).replace(/\b(con|de|y|al|a la|casero|casera|rapido|rapida|completo|completa)\b/g,'').replace(/\s+/g,' ').trim();
+        const ingredients=[...recipe[2]].map(freshguardRecipeWord).sort().join('|');
+        /* El mismo plato no se repite aunque esté registrado para almuerzo y cena. */
         const key=`${title}|${ingredients}`;
         if(seen.has(key))return false;
         seen.add(key);
